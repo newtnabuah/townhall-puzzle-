@@ -1,0 +1,255 @@
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useWebSocket } from '../../hooks/useWebSocket.js';
+import { useGameState } from '../../hooks/useGameState.js';
+import { PuzzleBoard } from '../game/PuzzleBoard.js';
+import { PowerupBar } from '../game/PowerupBar.js';
+import { Leaderboard } from '../host/Leaderboard.js';
+import type { PowerupType, ServerMessage } from '../../types/index.js';
+
+interface LocationState {
+  playerId: string;
+  roomCode: string;
+  playerName: string;
+  isHost: boolean;
+}
+
+export function GameScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { playerId, roomCode, playerName, isHost } = (location.state as LocationState) ?? {};
+
+  const { state, handleMessage, setIdentity, deactivatePeek, decrementPowerup, clearSolvedPuzzle } =
+    useGameState();
+
+  // Swap mode: two-step tile selection
+  const [swapMode, setSwapMode] = useState(false);
+  const [swapFirst, setSwapFirst] = useState<number | null>(null);
+
+  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const solvedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Elapsed display timer — pauses while freeze is active
+  const [elapsed, setElapsed] = useState(0);
+  const startTimeRef = useRef(Date.now());
+  const frozenUntilRef = useRef<number | null>(null);
+  frozenUntilRef.current = state.frozenUntil;
+
+  useEffect(() => {
+    if (playerId && roomCode) setIdentity(playerId, roomCode, playerName, isHost);
+  }, [playerId, roomCode, playerName, isHost, setIdentity]);
+
+  // Single persistent interval — reads frozenUntilRef to avoid restart issues
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const frozen = frozenUntilRef.current;
+      if (frozen && Date.now() < frozen) {
+        // Shift the base time so elapsed doesn't advance while frozen
+        startTimeRef.current += 1000;
+        return;
+      }
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []); // intentionally empty — uses refs
+
+  // Auto-dismiss peek
+  useEffect(() => {
+    if (!state.peekActive) return;
+    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    peekTimerRef.current = setTimeout(() => deactivatePeek(), 2500);
+  }, [state.peekActive, deactivatePeek]);
+
+  // Auto-dismiss solved overlay
+  useEffect(() => {
+    if (!state.solvedPuzzle) return;
+    if (solvedTimerRef.current) clearTimeout(solvedTimerRef.current);
+    solvedTimerRef.current = setTimeout(() => clearSolvedPuzzle(), 2500);
+    // Exit swap mode if a puzzle was just solved
+    setSwapMode(false);
+    setSwapFirst(null);
+  }, [state.solvedPuzzle, clearSolvedPuzzle]);
+
+  const onMessage = (msg: ServerMessage) => {
+    handleMessage(msg);
+  };
+
+  // Navigate to game over only after the solved overlay finishes (if showing)
+  useEffect(() => {
+    if (state.gameOver && !state.solvedPuzzle) {
+      navigate('/over', { state: { leaderboard: state.leaderboard, playerName, playerId } });
+    }
+  }, [state.gameOver, state.solvedPuzzle]);
+
+  const { send } = useWebSocket(playerId, roomCode, onMessage);
+
+  function handleTileClick(gridIndex: number) {
+    if (swapMode) {
+      if (swapFirst === null) {
+        // First tile selected
+        setSwapFirst(gridIndex);
+      } else if (swapFirst !== gridIndex) {
+        // Second tile selected — execute swap
+        decrementPowerup('swap');
+        send({ type: 'use_powerup', powerup: 'swap', swapIndices: [swapFirst, gridIndex] });
+        setSwapMode(false);
+        setSwapFirst(null);
+      }
+      return;
+    }
+    send({ type: 'tile_move', tileIndex: gridIndex });
+  }
+
+  function handlePowerup(powerup: PowerupType, targetId?: string) {
+    if (powerup === 'swap') {
+      if ((state.powerups.swap ?? 0) <= 0) return;
+      // Enter swap mode — don't decrement yet, wait for both tiles
+      setSwapMode(true);
+      setSwapFirst(null);
+      return;
+    }
+    decrementPowerup(powerup);
+    send({ type: 'use_powerup', powerup, targetId });
+    if (powerup === 'peek') {
+      if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+      peekTimerRef.current = setTimeout(() => deactivatePeek(), 2500);
+    }
+  }
+
+  const freezeActive = !!(state.frozenUntil && Date.now() < state.frozenUntil);
+  const totalPuzzles = state.puzzleIndices.length || 2;
+  const puzzleNum = Math.min(state.currentPuzzleIndex + 1, totalPuzzles);
+  const imageIndex = state.puzzleIndices[state.currentPuzzleIndex] ?? 0;
+
+  if (!playerId) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        No game data.{' '}
+        <button onClick={() => navigate('/join')} className="underline ml-2">Go home</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 to-indigo-950 flex flex-col items-center justify-center gap-6 p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between w-full max-w-5xl">
+        <div className="text-white font-bold text-lg">{playerName}</div>
+        <div className="text-indigo-300 text-sm">Puzzle {puzzleNum} / {totalPuzzles}</div>
+        <div className={`font-mono text-lg ${freezeActive ? 'text-cyan-300' : 'text-white'}`}>
+          {freezeActive ? '⏸' : '⏱'} {formatTime(elapsed)}
+        </div>
+      </div>
+
+      <div className="flex gap-8 items-start">
+        {/* Puzzle column */}
+        <div className="flex flex-col items-center gap-3">
+          {/* Status banners */}
+          {freezeActive && (
+            <div className="bg-cyan-500/20 text-cyan-300 rounded-xl px-4 py-2 text-sm font-semibold animate-pulse">
+              ⏸ Timer paused — +5s saved to your score
+            </div>
+          )}
+          {swapMode && (
+            <div className="bg-yellow-500/20 text-yellow-300 rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-3">
+              🔄 {swapFirst === null ? 'Click the first tile to swap' : 'Now click the second tile'}
+              <button
+                onClick={() => { setSwapMode(false); setSwapFirst(null); }}
+                className="text-xs underline text-yellow-400 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {state.tiles.length > 0 ? (
+            <PuzzleBoard
+              tiles={state.tiles}
+              imageIndex={imageIndex}
+              peekActive={state.peekActive}
+              swapMode={swapMode}
+              swapFirstIndex={swapFirst}
+              onTileClick={handleTileClick}
+            />
+          ) : (
+            <div
+              className="bg-white/10 rounded-xl flex items-center justify-center text-white animate-pulse"
+              style={{ width: 368, height: 368 }}
+            >
+              Loading puzzle…
+            </div>
+          )}
+
+          {/* Move counter + action buttons */}
+          <div className="flex items-center gap-3">
+            <p className="text-indigo-300 text-sm">
+              Moves: <span className="font-bold text-white">{state.moves}</span>
+            </p>
+            <button
+              onClick={() => send({ type: 'restart_puzzle' })}
+              title="Reshuffle the same image (+10 move penalty)"
+              className="text-xs text-gray-400 hover:text-white border border-gray-600 hover:border-gray-400 rounded-lg px-3 py-1 transition-colors"
+            >
+              ↺ Reshuffle <span className="text-red-400">+10</span>
+            </button>
+            <button
+              onClick={() => send({ type: 'skip_puzzle' })}
+              title="Skip to a completely new random puzzle"
+              className="text-xs text-orange-400 hover:text-orange-200 border border-orange-700 hover:border-orange-400 rounded-lg px-3 py-1 transition-colors"
+            >
+              ⏭ New puzzle
+            </button>
+          </div>
+        </div>
+
+        {/* Leaderboard sidebar */}
+        <div className="bg-white/10 rounded-2xl p-4 border border-white/10 min-w-[220px]">
+          <p className="text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-3">Leaderboard</p>
+          <Leaderboard entries={state.leaderboard} totalPuzzles={totalPuzzles} />
+        </div>
+      </div>
+
+      {/* Powerups */}
+      <div className="w-full max-w-5xl">
+        <p className="text-indigo-300 text-xs font-semibold uppercase tracking-wider text-center mb-3">
+          Powerups
+        </p>
+        <PowerupBar
+          powerups={state.powerups}
+          players={state.leaderboard}
+          currentPlayerId={playerId}
+          swapModeActive={swapMode}
+          onUse={handlePowerup}
+        />
+      </div>
+
+      {/* Puzzle solved overlay */}
+      {state.solvedPuzzle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
+          <div className="bg-gray-900 rounded-3xl p-8 text-center shadow-2xl border border-green-500/40 max-w-xs mx-4 animate-slide-in">
+            <div className="text-5xl mb-3">🎉</div>
+            <img
+              src={`/logos/logo${state.solvedPuzzle.imageIndex + 1}.png`}
+              alt="solved puzzle"
+              className="w-44 h-44 object-cover rounded-2xl mx-auto mb-4 ring-4 ring-green-400 shadow-lg"
+              draggable={false}
+            />
+            <h2 className="text-2xl font-extrabold text-green-400 mb-1">Puzzle Solved!</h2>
+            <p className="text-white text-2xl font-mono font-bold">
+              +{state.solvedPuzzle.puzzleScore.toLocaleString()} pts
+            </p>
+            {state.currentPuzzleIndex < totalPuzzles - 1 && (
+              <p className="text-gray-400 text-sm mt-3">Powerups refilled — last puzzle incoming…</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
