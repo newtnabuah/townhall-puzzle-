@@ -304,6 +304,28 @@ export function GameScreen() {
         )}
       </div>
 
+      {/* Waiting for other players overlay */}
+      {state.playerFinished && !state.gameOver && (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-gray-950/95 backdrop-blur-sm p-6">
+          <div className="w-full max-w-lg text-center">
+            <div className="text-6xl mb-4">🏁</div>
+            <h2 className="text-3xl font-extrabold text-white mb-2">You're done!</h2>
+            <p className="text-indigo-300 text-sm mb-8 flex items-center justify-center gap-2">
+              <span className="inline-flex gap-1">
+                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </span>
+              Waiting for other players to finish
+            </p>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <p className="text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-4">Live Standings</p>
+              <Leaderboard entries={state.leaderboard} totalPuzzles={totalPuzzles} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Scramble notification */}
       {state.scrambled && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">

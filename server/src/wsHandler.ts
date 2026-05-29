@@ -278,6 +278,9 @@ function completePuzzle(room: Room, player: Player): void {
   if (checkAllFinished(room)) {
     room.state = 'finished';
     broadcastToRoom(room, { type: 'game_over', leaderboard: getLeaderboard(room) });
+  } else if (player.currentPuzzleIndex >= player.puzzles.length) {
+    // This player finished all their puzzles but others are still playing
+    sendToPlayer(player, { type: 'player_finished', leaderboard: getLeaderboard(room) });
   }
 }
 

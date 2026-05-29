@@ -26,6 +26,7 @@ const initialState: GameClientState = {
   frozenUntil: null,
   solvedPuzzle: null,
   scrambled: false,
+  playerFinished: false,
 };
 
 export function useGameState() {
@@ -62,6 +63,9 @@ export function useGameState() {
 
         case 'leaderboard_update':
           return { ...prev, leaderboard: msg.leaderboard };
+
+        case 'player_finished':
+          return { ...prev, leaderboard: msg.leaderboard, playerFinished: true };
 
         case 'game_over':
           return { ...prev, leaderboard: msg.leaderboard, gameOver: true };

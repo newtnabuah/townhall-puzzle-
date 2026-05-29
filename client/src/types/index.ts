@@ -39,6 +39,7 @@ export type ServerMessage =
   | { type: 'powerup_applied'; powerup: PowerupType; payload?: unknown }
   | { type: 'puzzle_solved'; imageIndex: number; puzzleScore: number; newPowerups: Record<PowerupType, number> }
   | { type: 'leaderboard_update'; leaderboard: LeaderboardEntry[] }
+  | { type: 'player_finished'; leaderboard: LeaderboardEntry[] }
   | { type: 'game_over'; leaderboard: LeaderboardEntry[] }
   | { type: 'error'; message: string };
 
@@ -59,4 +60,5 @@ export interface GameClientState {
   frozenUntil: number | null;
   solvedPuzzle: { imageIndex: number; puzzleScore: number } | null;
   scrambled: boolean;
+  playerFinished: boolean;
 }
