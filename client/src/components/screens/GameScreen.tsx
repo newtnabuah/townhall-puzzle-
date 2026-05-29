@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../../hooks/useWebSocket.js';
 import { useGameState } from '../../hooks/useGameState.js';
+import { useAudio } from '../../hooks/useAudio.js';
 import { PuzzleBoard } from '../game/PuzzleBoard.js';
 import { PowerupBar } from '../game/PowerupBar.js';
 import { Leaderboard } from '../host/Leaderboard.js';
@@ -21,6 +22,9 @@ export function GameScreen() {
 
   const { state, handleMessage, setIdentity, deactivatePeek, decrementPowerup, clearSolvedPuzzle, clearScrambled } =
     useGameState();
+
+  const { startMusic, playTileMove, playSolved, playScrambled, playPowerup, playGameOver, muted, toggleMute } =
+    useAudio();
 
   // Swap mode: two-step tile selection
   const [swapMode, setSwapMode] = useState(false);
@@ -54,14 +58,13 @@ export function GameScreen() {
     const interval = setInterval(() => {
       const frozen = frozenUntilRef.current;
       if (frozen && Date.now() < frozen) {
-        // Shift the base time so elapsed doesn't advance while frozen
         startTimeRef.current += 1000;
         return;
       }
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
     }, 1000);
     return () => clearInterval(interval);
-  }, []); // intentionally empty — uses refs
+  }, []);
 
   // Auto-dismiss peek
   useEffect(() => {
@@ -70,19 +73,20 @@ export function GameScreen() {
     peekTimerRef.current = setTimeout(() => deactivatePeek(), 2500);
   }, [state.peekActive, deactivatePeek]);
 
-  // Auto-dismiss scramble notification
+  // Auto-dismiss scramble notification + play sound
   useEffect(() => {
     if (!state.scrambled) return;
+    playScrambled();
     if (scrambledTimerRef.current) clearTimeout(scrambledTimerRef.current);
     scrambledTimerRef.current = setTimeout(() => clearScrambled(), 2500);
   }, [state.scrambled, clearScrambled]);
 
-  // Auto-dismiss solved overlay
+  // Auto-dismiss solved overlay + play sound
   useEffect(() => {
     if (!state.solvedPuzzle) return;
+    playSolved();
     if (solvedTimerRef.current) clearTimeout(solvedTimerRef.current);
     solvedTimerRef.current = setTimeout(() => clearSolvedPuzzle(), 2500);
-    // Exit swap mode if a puzzle was just solved
     setSwapMode(false);
     setSwapFirst(null);
   }, [state.solvedPuzzle, clearSolvedPuzzle]);
@@ -91,9 +95,10 @@ export function GameScreen() {
     handleMessage(msg);
   };
 
-  // Navigate to game over only after the solved overlay finishes (if showing)
+  // Navigate to game over (after solved overlay if showing) + play fanfare
   useEffect(() => {
     if (state.gameOver && !state.solvedPuzzle) {
+      playGameOver();
       navigate('/over', { state: { leaderboard: state.leaderboard, playerName, playerId } });
     }
   }, [state.gameOver, state.solvedPuzzle]);
@@ -101,32 +106,33 @@ export function GameScreen() {
   const { send } = useWebSocket(playerId, roomCode, onMessage);
 
   function handleTileClick(gridIndex: number) {
+    startMusic(); // unlocks audio on first interaction
     if (swapMode) {
       if (swapFirst === null) {
-        // First tile selected
         setSwapFirst(gridIndex);
       } else if (swapFirst !== gridIndex) {
-        // Second tile selected — execute swap
         decrementPowerup('swap');
         send({ type: 'use_powerup', powerup: 'swap', swapIndices: [swapFirst, gridIndex] });
+        playPowerup('swap');
         setSwapMode(false);
         setSwapFirst(null);
       }
       return;
     }
+    playTileMove();
     send({ type: 'tile_move', tileIndex: gridIndex });
   }
 
   function handlePowerup(powerup: PowerupType, targetId?: string) {
     if (powerup === 'swap') {
       if ((state.powerups.swap ?? 0) <= 0) return;
-      // Enter swap mode — don't decrement yet, wait for both tiles
       setSwapMode(true);
       setSwapFirst(null);
       return;
     }
     decrementPowerup(powerup);
     send({ type: 'use_powerup', powerup, targetId });
+    playPowerup(powerup);
     if (powerup === 'peek') {
       if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
       peekTimerRef.current = setTimeout(() => deactivatePeek(), 2500);
@@ -153,8 +159,17 @@ export function GameScreen() {
       <div className="flex items-center justify-between w-full max-w-5xl">
         <div className="text-white font-bold text-lg">{playerName}</div>
         <div className="text-indigo-300 text-sm">Puzzle {puzzleNum} / {totalPuzzles}</div>
-        <div className={`font-mono text-lg ${freezeActive ? 'text-cyan-300' : 'text-white'}`}>
-          {freezeActive ? '⏸' : '⏱'} {formatTime(elapsed)}
+        <div className="flex items-center gap-3">
+          <div className={`font-mono text-lg ${freezeActive ? 'text-cyan-300' : 'text-white'}`}>
+            {freezeActive ? '⏸' : '⏱'} {formatTime(elapsed)}
+          </div>
+          <button
+            onClick={toggleMute}
+            title={muted ? 'Unmute' : 'Mute'}
+            className="text-lg text-gray-400 hover:text-white transition-colors"
+          >
+            {muted ? '🔇' : '🔊'}
+          </button>
         </div>
       </div>
 
