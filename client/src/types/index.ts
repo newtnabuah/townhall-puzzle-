@@ -25,6 +25,7 @@ export interface RoomSnapshot {
 
 export type ClientMessage =
   | { type: 'start_game' }
+  | { type: 'end_game' }
   | { type: 'tile_move'; tileIndex: number }
   | { type: 'use_powerup'; powerup: PowerupType; targetId?: string; swapIndices?: [number, number] }
   | { type: 'puzzle_complete' }
@@ -57,4 +58,5 @@ export interface GameClientState {
   peekActive: boolean;
   frozenUntil: number | null;
   solvedPuzzle: { imageIndex: number; puzzleScore: number } | null;
+  scrambled: boolean;
 }

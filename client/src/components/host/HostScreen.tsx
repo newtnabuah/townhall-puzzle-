@@ -99,6 +99,20 @@ export function HostScreen() {
         </Button>
       )}
 
+      {/* End Game button — only while game is active */}
+      {gameStarted && room?.state === 'active' && (
+        <button
+          onClick={() => {
+            if (window.confirm('End the game now? Current scores will be reported to all players.')) {
+              send({ type: 'end_game' });
+            }
+          }}
+          className="text-sm text-red-400 border border-red-700 hover:bg-red-900/30 hover:text-red-300 rounded-xl px-6 py-3 transition-colors"
+        >
+          ⏹ End Game Early
+        </button>
+      )}
+
       {room?.state === 'finished' && (
         <div className="text-center">
           <p className="text-green-400 text-2xl font-bold mb-4">Game Complete!</p>

@@ -25,6 +25,7 @@ const initialState: GameClientState = {
   peekActive: false,
   frozenUntil: null,
   solvedPuzzle: null,
+  scrambled: false,
 };
 
 export function useGameState() {
@@ -74,6 +75,9 @@ export function useGameState() {
             const duration = payload?.duration ?? 5000;
             return { ...prev, frozenUntil: Date.now() + duration };
           }
+          if (msg.powerup === 'scramble') {
+            return { ...prev, scrambled: true };
+          }
           return prev;
         }
 
@@ -112,6 +116,10 @@ export function useGameState() {
     setState((prev) => ({ ...prev, solvedPuzzle: null }));
   }, []);
 
+  const clearScrambled = useCallback(() => {
+    setState((prev) => ({ ...prev, scrambled: false }));
+  }, []);
+
   const reset = useCallback(() => {
     setState(initialState);
   }, []);
@@ -123,6 +131,7 @@ export function useGameState() {
     deactivatePeek,
     decrementPowerup,
     clearSolvedPuzzle,
+    clearScrambled,
     reset,
   };
 }

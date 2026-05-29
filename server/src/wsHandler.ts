@@ -156,6 +156,12 @@ function handleHostMessage(room: Room, ws: WebSocket, msg: ClientMessage): void 
     }
     startGame(room);
   }
+
+  if (msg.type === 'end_game') {
+    if (room.state !== 'active') return;
+    room.state = 'finished';
+    broadcastToRoom(room, { type: 'game_over', leaderboard: getLeaderboard(room) });
+  }
 }
 
 function startGame(room: Room): void {

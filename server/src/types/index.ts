@@ -51,6 +51,7 @@ export interface RoomSnapshot {
 
 export type ClientMessage =
   | { type: 'start_game' }
+  | { type: 'end_game' }
   | { type: 'tile_move'; tileIndex: number }
   | { type: 'use_powerup'; powerup: PowerupType; targetId?: string; swapIndices?: [number, number] }
   | { type: 'puzzle_complete' }

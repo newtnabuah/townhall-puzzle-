@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { isMovable, isSolved } from '../../lib/puzzle.js';
-import { getSlicedTiles } from '../../lib/canvas.js';
 
 interface PuzzleBoardProps {
   tiles: number[];
@@ -19,12 +18,10 @@ export function PuzzleBoard({
   swapFirstIndex,
   onTileClick,
 }: PuzzleBoardProps) {
-  const [tileImages, setTileImages] = useState<string[]>([]);
   const [fullImage, setFullImage] = useState('');
   const solved = isSolved(tiles);
 
   useEffect(() => {
-    getSlicedTiles(imageIndex).then(setTileImages).catch(console.error);
     setFullImage(`/logos/logo${imageIndex + 1}.png`);
   }, [imageIndex]);
 
@@ -58,7 +55,12 @@ export function PuzzleBoard({
             const canMove = !swapMode && !isBlank && isMovable(tiles, gridIndex);
             const isSwapFirst = swapMode && swapFirstIndex === gridIndex;
             const isSwapTarget = swapMode && swapFirstIndex !== null && swapFirstIndex !== gridIndex;
-            const imageSrc = tileImages[tileValue - 1];
+
+            // Compute background position for this tile's image slice
+            const pos = tileValue - 1; // 0-indexed position in the solved image
+            const tileRow = Math.floor(pos / 3);
+            const tileCol = pos % 3;
+            const bgPosition = `${tileCol * 50}% ${tileRow * 50}%`;
 
             return (
               <div
@@ -69,7 +71,7 @@ export function PuzzleBoard({
                 }}
                 className={[
                   'relative overflow-hidden rounded-sm select-none transition-opacity duration-300',
-                  isBlank ? 'bg-gray-900' : 'bg-gray-300',
+                  isBlank ? 'bg-gray-900' : '',
                   peekActive ? 'opacity-0' : 'opacity-100',
                   isSwapFirst ? 'ring-4 ring-yellow-400 ring-inset brightness-125' : '',
                   isSwapTarget ? 'cursor-crosshair hover:ring-2 hover:ring-yellow-300 ring-inset' : '',
@@ -78,21 +80,16 @@ export function PuzzleBoard({
                 ]
                   .filter(Boolean)
                   .join(' ')}
-              >
-                {!isBlank && imageSrc && (
-                  <img
-                    src={imageSrc}
-                    alt={`tile ${tileValue}`}
-                    className="w-full h-full object-cover pointer-events-none"
-                    draggable={false}
-                  />
-                )}
-                {!isBlank && !imageSrc && (
-                  <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-gray-700">
-                    {tileValue}
-                  </span>
-                )}
-              </div>
+                style={
+                  !isBlank && fullImage
+                    ? {
+                        backgroundImage: `url('${fullImage}')`,
+                        backgroundSize: '300% 300%',
+                        backgroundPosition: bgPosition,
+                      }
+                    : undefined
+                }
+              />
             );
           })}
         </div>

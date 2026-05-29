@@ -19,7 +19,7 @@ export function GameScreen() {
   const navigate = useNavigate();
   const { playerId, roomCode, playerName, isHost } = (location.state as LocationState) ?? {};
 
-  const { state, handleMessage, setIdentity, deactivatePeek, decrementPowerup, clearSolvedPuzzle } =
+  const { state, handleMessage, setIdentity, deactivatePeek, decrementPowerup, clearSolvedPuzzle, clearScrambled } =
     useGameState();
 
   // Swap mode: two-step tile selection
@@ -28,6 +28,7 @@ export function GameScreen() {
 
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const solvedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrambledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Elapsed display timer — pauses while freeze is active
   const [elapsed, setElapsed] = useState(0);
@@ -59,6 +60,13 @@ export function GameScreen() {
     if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
     peekTimerRef.current = setTimeout(() => deactivatePeek(), 2500);
   }, [state.peekActive, deactivatePeek]);
+
+  // Auto-dismiss scramble notification
+  useEffect(() => {
+    if (!state.scrambled) return;
+    if (scrambledTimerRef.current) clearTimeout(scrambledTimerRef.current);
+    scrambledTimerRef.current = setTimeout(() => clearScrambled(), 2500);
+  }, [state.scrambled, clearScrambled]);
 
   // Auto-dismiss solved overlay
   useEffect(() => {
@@ -222,6 +230,17 @@ export function GameScreen() {
           onUse={handlePowerup}
         />
       </div>
+
+      {/* Scramble notification */}
+      {state.scrambled && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-red-950 border border-red-500/60 rounded-3xl px-10 py-7 text-center shadow-2xl animate-slide-in max-w-xs mx-4">
+            <div className="text-5xl mb-3">🌀</div>
+            <h2 className="text-2xl font-extrabold text-red-400 mb-1">Scrambled!</h2>
+            <p className="text-red-200 text-sm">An opponent reshuffled your board<br />and added +5 moves to your score.</p>
+          </div>
+        </div>
+      )}
 
       {/* Puzzle solved overlay */}
       {state.solvedPuzzle && (
