@@ -1,7 +1,7 @@
 ﻿import type { PlayerPuzzle, PowerupType } from './types/index';
 
 export function calcPuzzleScore(moves: number, seconds: number): number {
-  return Math.max(0, 1000 - moves * 5 - seconds * 2);
+  return Math.max(200, 1000 - moves * 5 - seconds * 2);
 }
 
 export function calcFinalScore(
