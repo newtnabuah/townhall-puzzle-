@@ -30,6 +30,9 @@ export function GameScreen() {
   const [swapMode, setSwapMode] = useState(false);
   const [swapFirst, setSwapFirst] = useState<number | null>(null);
 
+  // Scramble target selection
+  const [scrambleTargetMode, setScrambleTargetMode] = useState(false);
+
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const solvedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrambledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,15 +126,20 @@ export function GameScreen() {
     send({ type: 'tile_move', tileIndex: gridIndex });
   }
 
-  function handlePowerup(powerup: PowerupType, targetId?: string) {
+  function handlePowerup(powerup: PowerupType) {
     if (powerup === 'swap') {
       if ((state.powerups.swap ?? 0) <= 0) return;
       setSwapMode(true);
       setSwapFirst(null);
       return;
     }
+    if (powerup === 'scramble') {
+      if ((state.powerups.scramble ?? 0) <= 0) return;
+      setScrambleTargetMode(true);
+      return;
+    }
     decrementPowerup(powerup);
-    send({ type: 'use_powerup', powerup, targetId });
+    send({ type: 'use_powerup', powerup });
     playPowerup(powerup);
     if (powerup === 'peek') {
       if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
@@ -139,10 +147,18 @@ export function GameScreen() {
     }
   }
 
+  function handleScrambleTarget(targetId: string) {
+    decrementPowerup('scramble');
+    send({ type: 'use_powerup', powerup: 'scramble', targetId });
+    playPowerup('scramble');
+    setScrambleTargetMode(false);
+  }
+
   const freezeActive = !!(state.frozenUntil && Date.now() < state.frozenUntil);
   const totalPuzzles = state.puzzleIndices.length || 2;
   const puzzleNum = Math.min(state.currentPuzzleIndex + 1, totalPuzzles);
   const imageIndex = state.puzzleIndices[state.currentPuzzleIndex] ?? 0;
+  const opponents = state.leaderboard.filter((e) => e.playerId !== playerId);
 
   if (!playerId) {
     return (
@@ -253,6 +269,39 @@ export function GameScreen() {
           swapModeActive={swapMode}
           onUse={handlePowerup}
         />
+
+        {/* Scramble target picker */}
+        {scrambleTargetMode && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-white/20 rounded-3xl p-8 text-center shadow-2xl max-w-sm w-full mx-4">
+              <div className="text-4xl mb-3">🌀</div>
+              <h2 className="text-xl font-extrabold text-white mb-1">Scramble who?</h2>
+              <p className="text-gray-400 text-sm mb-6">Their board gets reshuffled +5 moves</p>
+              <div className="space-y-2 mb-5">
+                {opponents.length === 0 ? (
+                  <p className="text-gray-500 text-sm py-2">No opponents to target</p>
+                ) : (
+                  opponents.map((p) => (
+                    <button
+                      key={p.playerId}
+                      onClick={() => handleScrambleTarget(p.playerId)}
+                      className="w-full flex items-center justify-between bg-red-900/30 hover:bg-red-800/50 border border-red-700/50 hover:border-red-500 rounded-xl px-5 py-3 text-white font-semibold transition-all active:scale-95"
+                    >
+                      <span>{p.name}</span>
+                      <span className="text-gray-400 text-sm font-normal">{p.totalScore.toLocaleString()} pts</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <button
+                onClick={() => setScrambleTargetMode(false)}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors underline"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scramble notification */}

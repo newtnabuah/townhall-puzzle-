@@ -201,9 +201,8 @@ function handleTileMove(room: Room, player: Player, tileIndex: number): void {
   const puzzle = player.puzzles[player.currentPuzzleIndex];
   if (!puzzle || puzzle.completed) return;
 
-  // Stamp start time on the very first move so the clock is accurate
-  // regardless of reconnect timing (startTime stays 0 until then).
-  if (puzzle.moves === 0 || puzzle.startTime === 0) {
+  // Stamp start time on first move only if it hasn't been set yet.
+  if (puzzle.startTime === 0) {
     puzzle.startTime = Date.now();
   }
 
@@ -233,7 +232,7 @@ function completePuzzle(room: Room, player: Player): void {
   puzzle.completed = true;
   puzzle.endTime = Date.now();
 
-  const rawMs = puzzle.endTime - puzzle.startTime;
+  const rawMs = Math.max(0, puzzle.endTime - puzzle.startTime);
   const netMs = Math.max(0, rawMs - player.frozenBonus);
   const seconds = Math.floor(netMs / 1000);
   const puzzleScore = calcPuzzleScore(puzzle.moves, seconds);

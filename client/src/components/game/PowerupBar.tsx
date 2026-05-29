@@ -5,7 +5,7 @@ interface PowerupBarProps {
   players: LeaderboardEntry[];
   currentPlayerId: string;
   swapModeActive: boolean;
-  onUse: (powerup: PowerupType, targetId?: string) => void;
+  onUse: (powerup: PowerupType) => void;
 }
 
 interface PowerupConfig {
@@ -13,39 +13,17 @@ interface PowerupConfig {
   label: string;
   icon: string;
   description: string;
-  needsTarget: boolean;
 }
 
 const POWERUPS: PowerupConfig[] = [
-  { type: 'peek',      label: 'Peek',      icon: '👁',  description: 'Fade tiles transparent 2.5s — full-size image shows through',    needsTarget: false },
-  { type: 'swap',      label: 'Swap',      icon: '🔄',  description: 'Click any two tiles to swap them — no adjacency required',        needsTarget: false },
-  { type: 'freeze',    label: 'Freeze',    icon: '🧊',  description: 'Pause your scoring timer for 5s',                                 needsTarget: false },
-  { type: 'reshuffle', label: 'Reshuffle', icon: '🔀',  description: 'Reshuffle your board for an easier layout',                       needsTarget: false },
-  { type: 'scramble',  label: 'Scramble',  icon: '🌀',  description: 'Scramble an opponent\'s board (+5 move penalty)',                 needsTarget: true  },
+  { type: 'peek',      label: 'Peek',      icon: '👁',  description: 'Fade tiles transparent 2.5s — full-size image shows through' },
+  { type: 'swap',      label: 'Swap',      icon: '🔄',  description: 'Click any two tiles to swap them — no adjacency required'   },
+  { type: 'freeze',    label: 'Freeze',    icon: '🧊',  description: 'Pause your scoring timer for 5s'                            },
+  { type: 'reshuffle', label: 'Reshuffle', icon: '🔀',  description: 'Reshuffle your board for an easier layout'                  },
+  { type: 'scramble',  label: 'Scramble',  icon: '🌀',  description: 'Scramble an opponent\'s board (+5 move penalty)'            },
 ];
 
-export function PowerupBar({ powerups, players, currentPlayerId, swapModeActive, onUse }: PowerupBarProps) {
-  const opponents = players.filter((p) => p.playerId !== currentPlayerId);
-
-  function pickTarget(label: string): string | null {
-    if (opponents.length === 0) return null;
-    if (opponents.length === 1) return opponents[0].playerId;
-    const name = window.prompt(`${label} who?\n${opponents.map((o) => o.name).join(', ')}`);
-    const target = opponents.find((o) => o.name.toLowerCase() === name?.toLowerCase());
-    return target?.playerId ?? null;
-  }
-
-  function handleClick(pu: PowerupConfig) {
-    if (powerups[pu.type] <= 0) return;
-    if (pu.needsTarget) {
-      const targetId = pickTarget(pu.label);
-      if (!targetId) return;
-      onUse(pu.type, targetId);
-    } else {
-      onUse(pu.type);
-    }
-  }
-
+export function PowerupBar({ powerups, swapModeActive, onUse }: PowerupBarProps) {
   return (
     <div className="flex gap-2 justify-center flex-wrap">
       {POWERUPS.map((pu) => {
@@ -56,7 +34,7 @@ export function PowerupBar({ powerups, players, currentPlayerId, swapModeActive,
         return (
           <button
             key={pu.type}
-            onClick={() => handleClick(pu)}
+            onClick={() => { if (!disabled) onUse(pu.type); }}
             disabled={disabled}
             title={pu.description}
             className={[
