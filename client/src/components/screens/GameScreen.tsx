@@ -40,6 +40,15 @@ export function GameScreen() {
     if (playerId && roomCode) setIdentity(playerId, roomCode, playerName, isHost);
   }, [playerId, roomCode, playerName, isHost, setIdentity]);
 
+  // Preload all puzzle images as soon as the indices are known
+  useEffect(() => {
+    if (state.puzzleIndices.length === 0) return;
+    state.puzzleIndices.forEach((idx) => {
+      const img = new Image();
+      img.src = `/logos/logo${idx + 1}.png`;
+    });
+  }, [state.puzzleIndices]);
+
   // Single persistent interval — reads frozenUntilRef to avoid restart issues
   useEffect(() => {
     const interval = setInterval(() => {
@@ -233,11 +242,14 @@ export function GameScreen() {
 
       {/* Scramble notification */}
       {state.scrambled && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-red-950 border border-red-500/60 rounded-3xl px-10 py-7 text-center shadow-2xl animate-slide-in max-w-xs mx-4">
-            <div className="text-5xl mb-3">🌀</div>
-            <h2 className="text-2xl font-extrabold text-red-400 mb-1">Scrambled!</h2>
-            <p className="text-red-200 text-sm">An opponent reshuffled your board<br />and added +5 moves to your score.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border-2 border-red-500 rounded-3xl px-10 py-8 text-center shadow-2xl max-w-xs mx-4 animate-shake">
+            <div className="text-6xl mb-4">🌀</div>
+            <h2 className="text-3xl font-extrabold text-red-400 mb-2">Scrambled!</h2>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              An opponent reshuffled your board<br />
+              <span className="text-red-400 font-semibold">+5 moves added to your score</span>
+            </p>
           </div>
         </div>
       )}

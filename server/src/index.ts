@@ -17,7 +17,7 @@ app.use('/api/rooms', roomRouter);
 
 if (isProd) {
   const clientDist = path.join(__dirname, '../../client/dist');
-  app.use(express.static(clientDist));
+  app.use(express.static(clientDist, { maxAge: '7d' }));
   // SPA catch-all — must come after API routes
   app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
