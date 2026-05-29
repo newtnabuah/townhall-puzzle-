@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useWebSocket } from '../../hooks/useWebSocket.js';
 import { useGameState } from '../../hooks/useGameState.js';
 import { Leaderboard } from './Leaderboard.js';
