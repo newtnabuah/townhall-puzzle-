@@ -201,8 +201,9 @@ function handleTileMove(room: Room, player: Player, tileIndex: number): void {
   const puzzle = player.puzzles[player.currentPuzzleIndex];
   if (!puzzle || puzzle.completed) return;
 
-  // Stamp start time on first move only if it hasn't been set yet.
-  if (puzzle.startTime === 0) {
+  // Stamp start time on the first move of each puzzle so the clock starts
+  // when the player actually begins, not when the puzzle was assigned.
+  if (puzzle.moves === 0 || puzzle.startTime === 0) {
     puzzle.startTime = Date.now();
   }
 
