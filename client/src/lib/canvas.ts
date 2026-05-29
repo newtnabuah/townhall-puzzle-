@@ -41,7 +41,7 @@ export async function sliceImage(src: string): Promise<string[]> {
 const cache = new Map<string, string[]>();
 
 export async function getSlicedTiles(imageIndex: number): Promise<string[]> {
-  const src = `/logos/logo${imageIndex + 1}.png`;
+  const src = `/logos/logo${imageIndex + 1}.webp`;
   if (cache.has(src)) return cache.get(src)!;
   const tiles = await sliceImage(src);
   cache.set(src, tiles);

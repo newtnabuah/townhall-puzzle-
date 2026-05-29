@@ -45,7 +45,7 @@ export function GameScreen() {
     if (state.puzzleIndices.length === 0) return;
     state.puzzleIndices.forEach((idx) => {
       const img = new Image();
-      img.src = `/logos/logo${idx + 1}.png`;
+      img.src = `/logos/logo${idx + 1}.webp`;
     });
   }, [state.puzzleIndices]);
 
@@ -260,7 +260,7 @@ export function GameScreen() {
           <div className="bg-gray-900 rounded-3xl p-8 text-center shadow-2xl border border-green-500/40 max-w-xs mx-4 animate-slide-in">
             <div className="text-5xl mb-3">🎉</div>
             <img
-              src={`/logos/logo${state.solvedPuzzle.imageIndex + 1}.png`}
+              src={`/logos/logo${state.solvedPuzzle.imageIndex + 1}.webp`}
               alt="solved puzzle"
               className="w-44 h-44 object-cover rounded-2xl mx-auto mb-4 ring-4 ring-green-400 shadow-lg"
               draggable={false}

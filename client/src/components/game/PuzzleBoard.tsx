@@ -22,7 +22,7 @@ export function PuzzleBoard({
   const solved = isSolved(tiles);
 
   useEffect(() => {
-    setFullImage(`/logos/logo${imageIndex + 1}.png`);
+    setFullImage(`/logos/logo${imageIndex + 1}.webp`);
   }, [imageIndex]);
 
   return (
