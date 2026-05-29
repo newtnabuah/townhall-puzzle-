@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../../hooks/useWebSocket.js';
 import { useGameState } from '../../hooks/useGameState.js';
-import { useAudio } from '../../hooks/useAudio.js';
+import { useAudio, startBackgroundMusic } from '../../hooks/useAudio.js';
 import { PuzzleBoard } from '../game/PuzzleBoard.js';
 import { PowerupBar } from '../game/PowerupBar.js';
 import { Leaderboard } from '../host/Leaderboard.js';
@@ -23,7 +23,7 @@ export function GameScreen() {
   const { state, handleMessage, setIdentity, deactivatePeek, decrementPowerup, clearSolvedPuzzle, clearScrambled } =
     useGameState();
 
-  const { startMusic, playTileMove, playSolved, playScrambled, playPowerup, playGameOver, muted, toggleMute } =
+  const { playTileMove, playSolved, playScrambled, playPowerup, playGameOver, muted, toggleMute } =
     useAudio();
 
   // Swap mode: two-step tile selection
@@ -106,7 +106,7 @@ export function GameScreen() {
   const { send } = useWebSocket(playerId, roomCode, onMessage);
 
   function handleTileClick(gridIndex: number) {
-    startMusic(); // unlocks audio on first interaction
+    startBackgroundMusic(); // ensure music is running (resumes if tab was backgrounded)
     if (swapMode) {
       if (swapFirst === null) {
         setSwapFirst(gridIndex);

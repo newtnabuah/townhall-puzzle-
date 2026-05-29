@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../../hooks/useWebSocket.js';
 import { useGameState } from '../../hooks/useGameState.js';
+import { startBackgroundMusic } from '../../hooks/useAudio.js';
 import { Button } from '../ui/Button.js';
 import type { ServerMessage } from '../../types/index.js';
 
@@ -24,6 +25,11 @@ export function LobbyScreen() {
       setIdentity(playerId, roomCode, playerName, isHost);
     }
   }, [playerId, roomCode, playerName, isHost, setIdentity]);
+
+  // Start music here — user already interacted (clicked Join) to reach this screen
+  useEffect(() => {
+    startBackgroundMusic();
+  }, []);
 
   const onMessage = (msg: ServerMessage) => {
     handleMessage(msg);
